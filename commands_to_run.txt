@@ -1,0 +1,17 @@
+git clone https://github.com/yanran-tang/CaseGNN.git
+cd CaseGNN
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# move data folder to their respective places and rename according to the file structure on git
+# create openai secret key and add to the openaiAPI.py file 
+
+mkdir -p PromptCase/task1_train_2025/processed
+mkdir -p PromptCase/task1_train_2025/processed_new
+
+mkdir -p PromptCase/task1_test_2025/processed
+mkdir -p PromptCase/task1_test_2025/processed_new
+
+
+. ./LegalFeatureExtraction.sh

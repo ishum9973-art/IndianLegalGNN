@@ -1,0 +1,43 @@
+venv/
+task1_train_2025/
+task1_test_2025/
+task1_test_labels_2025.json
+task1_train_labels_2025.json
+
+# Python cache/build artifacts
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Local environments
+.venv/
+env/
+ENV/
+
+# Logs
+*.log
+
+# TensorBoard / experiment outputs
+CaseGNN_experiments/
+events.out.tfevents.*
+
+# Generated PromptCase embeddings
+PromptCase/promptcase_embedding/*.pt
+PromptCase/promptcase_embedding/*_case_list.json
+
+# Generated graph binaries
+Graph_generation/graph/graph_bin_*/
+Graph_generation/graph/**/*.bin
+
+# Generated information extraction outputs
+Information_extraction/coliee*_ie/**/result/
+Information_extraction/coliee*_ie/**/ner/
+Information_extraction/coliee*_ie/**/kg/*-out.csv
+
+# OS/editor artifacts
+.DS_Store
+Thumbs.db
