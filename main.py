@@ -99,11 +99,8 @@ def main():
         train_labels = json.load(f)
         f.close() 
 
-    bm25_hard_neg_dict = {}
     with open('./label/hard_neg_top50_train_'+args.data+'.json', 'r')as file:
-        for line in file.readlines():
-            dic = json.loads(line)
-            bm25_hard_neg_dict.update(dic)
+        bm25_hard_neg_dict = json.load(file)
         file.close() 
 
     # ## load test label

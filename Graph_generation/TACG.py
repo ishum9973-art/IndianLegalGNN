@@ -56,9 +56,10 @@ model.eval()
 with torch.no_grad():
     for file in tqdm(file_list):
         graph_num += 1
-        file_name = file.split('_')[-1].split('.')[0]
+        file_base = file.split('.')[0]
+        file_name = file_base.split('_')[-1]
         ## case_embedding_format = [fact_embedding, issue_embedding, cross_embedding]
-        promptcase_embedding = candidate_matrix[0][embedding_index][candidate_matrix_index.index(f"named_entity_{file_name}.txt")]
+        promptcase_embedding = candidate_matrix[0][embedding_index][candidate_matrix_index.index(f"{file_base}.txt")]
         graph_name_list.append(int(file_name))
         list_node1 = []
         list_node2 = []
@@ -184,10 +185,11 @@ elif args.dataset == 'train':
     query_graph_label = []
     for key, value in noticed_case_list.items():
         k = key.split('.')[0]
-        query_graph_dict.update({k: (CaseGraph[str(k)])})
-        query_graph_list.append(CaseGraph[str(k)])
-        query_graph_label.append(int(k))
+        k_num = k.split('_')[-1]
+        padded_k = str(int(k_num)).zfill(6)
+        query_graph_dict.update({k: CaseGraph[padded_k]})
+        query_graph_list.append(CaseGraph[padded_k])
+        query_graph_label.append(int(k_num))
     graph_labels = {"glabel": torch.Tensor(query_graph_label)}
 
     save_graphs("./Graph_generation/graph/graph_bin_"+args.data+"/bidirec_"+args.data+args.dataset+"_"+args.feature+"_Synthetic.bin", query_graph_list, graph_labels)
-

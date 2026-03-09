@@ -1,13 +1,12 @@
 import tiktoken
 import os
 from tqdm import tqdm
-from openai import OpenAI
 import tiktoken
 encoding = tiktoken.get_encoding("cl100k_base")
 import argparse
 import requests
 
-BASE_URL = "https://53330c3e49d1.ngrok-free.app"
+BASE_URL = "https://02df-35-188-58-167.ngrok-free.app"
 CUSTOM_API_URL = f"{BASE_URL}/v1/chat/completions"
 
 

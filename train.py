@@ -8,6 +8,16 @@ import json
 from torch_metrics import t_metrics, metric, yf_metric, rank
 
 
+def normalize_case_identifier(case_str):
+    num = case_str.split('_')[-1].split('.')[0]
+    return str(int(num)).zfill(6)
+
+def current_case_key_from_index(case_index):
+    return f"current_case_{str(int(case_index)).zfill(4)}.txt"
+
+def normalize_case_key(key):
+    return str(int(key.split('_')[-1].split('.')[0])).zfill(6)
+
 def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, referissue_pool_dataset, label_dict, yf_path, epoch, temp, bm25_hard_neg_dict, hard_neg, hard_neg_num, train_flag, embedding_saving, optimizer=None):
     if train_flag:
         ## Training
@@ -32,25 +42,27 @@ def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, refer
             bm25_neg_sumfact_graph = []
             bm25_neg_referissue_graph = []
             for x in range(len(batched_case_list)):
-                query_name = batched_case_list[x] + '.txt'
+                case_index = int(batched_case_list[x])
+                query_name = current_case_key_from_index(case_index)
                 query_sumfact_graph.append(sumfact_pool_dataset.graphs[batched_case_list[x] ])
                 query_referissue_graph.append(referissue_pool_dataset.graphs[batched_case_list[x]])
 
-                pos_case = random.choice(label_dict[query_name]).split('.')[0]
+                pos_candidates = [normalize_case_identifier(case_name) for case_name in label_dict[query_name]]
+                pos_case = random.choice(pos_candidates)
                 positive_sumfact_graph.append(sumfact_pool_dataset.graphs[pos_case])  
                 positive_referissue_graph.append(referissue_pool_dataset.graphs[pos_case]) 
                 i = 0
-                while i<4400: 
+                while True: 
                     ran_neg_case = random.choice(list(sumfact_pool_dataset.labels.keys()))
-                    if ran_neg_case+'.txt' not in label_dict[query_name]:
+                    if ran_neg_case not in pos_candidates:
                         break
-                    break
 
                 ran_neg_sumfact_graph.append(sumfact_pool_dataset.graphs[ran_neg_case])
                 ran_neg_referissue_graph.append(referissue_pool_dataset.graphs[ran_neg_case])
                 
                 for i in range(hard_neg_num):
-                    bm25_neg_case = random.choice(bm25_hard_neg_dict[query_name]).split('.')[0]
+                    bm25_candidates = [normalize_case_identifier(case_name) for case_name in bm25_hard_neg_dict[query_name]]
+                    bm25_neg_case = random.choice(bm25_candidates)
                     bm25_neg_sumfact_graph.append(sumfact_pool_dataset.graphs[bm25_neg_case])  
                     bm25_neg_referissue_graph.append(referissue_pool_dataset.graphs[bm25_neg_case]) 
                 
@@ -193,12 +205,14 @@ def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, refer
             test_query_list = []
             for key, value in label_dict.items():
                 test_query_list.append(key)
-                query_index = test_label_list.index(key.split('.')[0])
+                normalized_query = normalize_case_key(key.split('.')[0])
+                query_index = test_label_list.index(normalized_query)
                 score = test_sim_score[query_index, :]
                 sim_score.append(score)
             sim_score = torch.stack(sim_score)                        
             
             final_pre_dict = rank(sim_score, len(test_label_list), test_query_list, test_label_list)
+            print("final_pre_dict sample:", list(final_pre_dict.items())[:3])
 
             ##1stage
             correct_pred, retri_cases, relevant_cases, Micro_pre, Micro_recall, Micro_F, macro_pre, macro_recall, macro_F = metric(5, final_pre_dict, label_dict)

@@ -7,6 +7,15 @@ import nltk
 nltk.download('punkt')
 DetectorFactory.seed = 0
 
+def read_case_text(path: str) -> str:
+    """Read a case file with an encoding fallback for non UTF-8 bytes."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except UnicodeDecodeError:
+        with open(path, "r", encoding="latin-1") as f:
+            return f.read()
+
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -40,55 +49,55 @@ def rep2(match):
     return result.replace("{}", "[").replace("}", "]")
 total = 0
 for name in names:
-    with open(f"./PromptCase/task1_"+args.dataset+"_"+args.data+"/task1_"+args.dataset+"_files_"+args.data+"/"+name, "r", encoding="utf-8") as f:
-        t = f.read()
-        idx_ = t.find("[1]")
-        if idx_ != -1:
-            t = t[idx_:]
-        t = nltk.sent_tokenize(t)
-        result = []
-        for i, sentence in enumerate(t):
-            if ("FRAGMENT_SUPPRESSED" in sentence or 'REFERENCE_SUPPRESSED' in sentence or 'CITATION_SUPPRESSED' in sentence):
-                position = sentence.find("FRAGMENT_SUPPRESSED")
-                if position == -1:
-                    position = sentence.find("REFERENCE_SUPPRESSED")
-                if position == -1:
-                    position = sentence.find("CITATION_SUPPRESSED")
-                length = len(sentence)
-                if position < length / 2:
-                    if i > 0 and t[i-1] not in result:
-                        result.append(t[i-1])
-                    if sentence not in result:
-                        result.append(sentence)
-                else:
-                    if sentence not in result:
-                        result.append(sentence)
-                    if i < len(t) - 1 and t[i+1] not in result:
-                        result.append(t[i+1])
-        t = "".join(result)
-        lines = t.splitlines()
-        lines = [line.strip() for line in lines]
-        sentence_list = []
-        flag = True
-        
-        for l in lines:
-            l1 = l.replace("<FRAGMENT_SUPPRESSED>", "").replace("FRAGMENT_SUPPRESSED", "").strip()
-            l2 = re.sub('\[\d{1,3}\]', "", l1).strip()
-            if (
-                (len(l2) == 1 or
-                    (
-                        l2 != ""
-                        and l2[0] != "("
-                        and len(l2) > 1
-                        and l2[1] != ")"
-                        and not l2[0].isdigit()
-                    ))
-                and sentence_list
-                and not is_sentence(sentence_list[-1])
-            ):
-                sentence_list[-1] += f" {l2}"
+    filename = f"./PromptCase/task1_"+args.dataset+"_"+args.data+"/task1_"+args.dataset+"_files_"+args.data+"/"+name
+    t = read_case_text(filename)
+    idx_ = t.find("[1]")
+    if idx_ != -1:
+        t = t[idx_:]
+    t = nltk.sent_tokenize(t)
+    result = []
+    for i, sentence in enumerate(t):
+        if ("FRAGMENT_SUPPRESSED" in sentence or 'REFERENCE_SUPPRESSED' in sentence or 'CITATION_SUPPRESSED' in sentence):
+            position = sentence.find("FRAGMENT_SUPPRESSED")
+            if position == -1:
+                position = sentence.find("REFERENCE_SUPPRESSED")
+            if position == -1:
+                position = sentence.find("CITATION_SUPPRESSED")
+            length = len(sentence)
+            if position < length / 2:
+                if i > 0 and t[i-1] not in result:
+                    result.append(t[i-1])
+                if sentence not in result:
+                    result.append(sentence)
             else:
-                sentence_list.append(l2)
+                if sentence not in result:
+                    result.append(sentence)
+                if i < len(t) - 1 and t[i+1] not in result:
+                    result.append(t[i+1])
+    t = "".join(result)
+    lines = t.splitlines()
+    lines = [line.strip() for line in lines]
+    sentence_list = []
+    flag = True
+
+    for l in lines:
+        l1 = l.replace("<FRAGMENT_SUPPRESSED>", "").replace("FRAGMENT_SUPPRESSED", "").strip()
+        l2 = re.sub('\[\d{1,3}\]', "", l1).strip()
+        if (
+            (len(l2) == 1 or
+                (
+                    l2 != ""
+                    and l2[0] != "("
+                    and len(l2) > 1
+                    and l2[1] != ")"
+                    and not l2[0].isdigit()
+                ))
+            and sentence_list
+            and not is_sentence(sentence_list[-1])
+        ):
+            sentence_list[-1] += f" {l2}"
+        else:
+            sentence_list.append(l2)
     txt = "\n".join(sentence_list)
 
     txt = re.sub("\. *(\. *)+", "", txt)
@@ -139,15 +148,15 @@ for name in names:
     words = nltk.word_tokenize(txt)
     now_len = len(words)
     if len(words) < 512:
-        with open(f"./PromptCase/task1_"+args.dataset+"_"+args.data+"/processed/"+name, "r", encoding="utf-8") as fd:
-            new_txt = fd.read()
-            slt = nltk.sent_tokenize(new_txt)
-            for ii, sl in enumerate(slt):
-                new_len_words = len(sl.split(' '))
-                now_len += new_len_words
-                if now_len > 512:
-                    break
-            txt = "".join(slt[:ii]) + txt
+        processed_path = f"./PromptCase/task1_"+args.dataset+"_"+args.data+"/processed/"+name
+        new_txt = read_case_text(processed_path)
+        slt = nltk.sent_tokenize(new_txt)
+        for ii, sl in enumerate(slt):
+            new_len_words = len(sl.split(' '))
+            now_len += new_len_words
+            if now_len > 512:
+                break
+        txt = "".join(slt[:ii]) + txt
     with open(f"./PromptCase/task1_"+args.dataset+"_"+args.data+"/processed_new/"+name, "w+", encoding="utf-8") as f:
         f.write(txt)
         

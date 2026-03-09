@@ -7,11 +7,21 @@ pip install -r requirements.txt
 # move data folder to their respective places and rename according to the file structure on git
 # create openai secret key and add to the openaiAPI.py file 
 
-mkdir -p PromptCase/task1_train_2025/processed
-mkdir -p PromptCase/task1_train_2025/processed_new
+mkdir -p PromptCase/task1_train_2017/processed
+mkdir -p PromptCase/task1_train_2017/processed_new
 
-mkdir -p PromptCase/task1_test_2025/processed
-mkdir -p PromptCase/task1_test_2025/processed_new
+mkdir -p PromptCase/task1_test_2017/processed
+mkdir -p PromptCase/task1_test_2017/processed_new
 
 
-. ./LegalFeatureExtraction.sh
+. ./LegalFeatureExtraction.sh   #done
+
+. ./RelationExtraction.sh
+
+python PromptCase/promptcase_embedding/PromptCase_embedding_generation.py --data 2017 --dataset test
+python PromptCase/promptcase_embedding/PromptCase_embedding_generation.py --data 2017 --dataset train
+
+
+. ./TACG.sh
+
+. ./CaseGNN2017_run.sh

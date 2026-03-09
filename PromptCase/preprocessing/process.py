@@ -6,6 +6,15 @@ from langdetect import DetectorFactory
 from tqdm import tqdm
 DetectorFactory.seed = 0
 
+def read_case_text(path: str) -> str:
+    """Read a case file with an encoding fallback for non UTF-8 bytes."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except UnicodeDecodeError:
+        with open(path, "r", encoding="latin-1") as f:
+            return f.read()
+
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -39,41 +48,41 @@ def rep2(match):
 
 total = 0
 for name in tqdm(names):
-    with open(f"./PromptCase/task1_"+args.dataset+"_"+args.data+"/task1_"+args.dataset+"_files_"+args.data+"/"+name, "r", encoding="utf-8") as f:
-        t = f.read()
-        idx_ = t.find("[1]")
-        if idx_ != -1:
-            t = t[idx_:]
-        lines = t.splitlines()
-        lines = [line.strip() for line in lines]
-        sentence_list = []
-        flag = True
-        
-        for l in lines:
-            if flag and (
-                "<FRAGMENT_SUPPRESSED>" in l
-                or " FRAGMENT_SUPPRESSED" in l
-                or l == ""
-            ):
-                continue
-            flag = False
-            l1 = l.replace("<FRAGMENT_SUPPRESSED>", "").replace("FRAGMENT_SUPPRESSED", "").strip()
-            l2 = re.sub('\[\d{1,3}\]', "", l1).strip()
-            if (
-                (len(l2) == 1 or
-                    (
-                        l2 != ""
-                        and l2[0] != "("
-                        and len(l2) > 1
-                        and l2[1] != ")"
-                        and not l2[0].isdigit()
-                    ))
-                and sentence_list
-                and not is_sentence(sentence_list[-1])
-            ):
-                sentence_list[-1] += f" {l2}"
-            else:
-                sentence_list.append(l2)
+    filename = f"./PromptCase/task1_"+args.dataset+"_"+args.data+"/task1_"+args.dataset+"_files_"+args.data+"/"+name
+    t = read_case_text(filename)
+    idx_ = t.find("[1]")
+    if idx_ != -1:
+        t = t[idx_:]
+    lines = t.splitlines()
+    lines = [line.strip() for line in lines]
+    sentence_list = []
+    flag = True
+
+    for l in lines:
+        if flag and (
+            "<FRAGMENT_SUPPRESSED>" in l
+            or " FRAGMENT_SUPPRESSED" in l
+            or l == ""
+        ):
+            continue
+        flag = False
+        l1 = l.replace("<FRAGMENT_SUPPRESSED>", "").replace("FRAGMENT_SUPPRESSED", "").strip()
+        l2 = re.sub('\[\d{1,3}\]', "", l1).strip()
+        if (
+            (len(l2) == 1 or
+                (
+                    l2 != ""
+                    and l2[0] != "("
+                    and len(l2) > 1
+                    and l2[1] != ")"
+                    and not l2[0].isdigit()
+                ))
+            and sentence_list
+            and not is_sentence(sentence_list[-1])
+        ):
+            sentence_list[-1] += f" {l2}"
+        else:
+            sentence_list.append(l2)
     txt = "\n".join(sentence_list)
 
     txt = re.sub("\. *(\. *)+", "", txt)
