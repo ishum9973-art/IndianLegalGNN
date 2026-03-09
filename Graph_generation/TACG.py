@@ -112,7 +112,7 @@ with torch.no_grad():
                             node_num += 1
                             Entity_2 = node_num
                             index_dict.update({a_1[4]: Entity_2})
-                            node_embedding_weights.append(Entity_1_embedding)
+                            node_embedding_weights.append(Entity_2_embedding)
                         list_node1.append(Entity_1)
                         list_node2.append(Entity_2)
                         Relation_embedding_weights.append(Relation)

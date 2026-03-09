@@ -3,6 +3,8 @@ task1_train_2025/
 task1_test_2025/
 task1_test_labels_2025.json
 task1_train_labels_2025.json
+CaseGNN/
+CaseGNN.zip
 
 # Python cache/build artifacts
 __pycache__/
@@ -20,6 +22,8 @@ ENV/
 
 # Logs
 *.log
+# Dedicated CaseGNN run logs
+CaseGNN*_run.log
 
 # TensorBoard / experiment outputs
 CaseGNN_experiments/

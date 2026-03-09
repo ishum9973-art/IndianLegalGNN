@@ -8,14 +8,9 @@ def normalize_case_id(label_value):
     return str(int(label_value.split('_')[-1].split('.')[0])).zfill(6)
 
 
-def format_current_case_label(label_value):
-    """Normalize a numeric label into the current_case_XXXX.txt naming convention."""
-    return f"current_case_{str(int(label_value)).zfill(4)}.txt"
-
-
-def normalized_label_dict(label_dict):
-    """Precompute normalized numeric IDs for each label list."""
-    return {key: [normalize_case_id(v) for v in values] for key, values in label_dict.items()}
+def format_prior_case_label(label_value):
+    """Normalize a numeric label into the prior_case_XXXX.txt naming convention."""
+    return f"prior_case_{str(int(label_value)).zfill(4)}.txt"
 
 
 def rank(test_sim_score_matrix, ranking_num, test_query_list, test_label_list):
@@ -31,7 +26,7 @@ def rank(test_sim_score_matrix, ranking_num, test_query_list, test_label_list):
         que_name = test_query_list[i]
         for j in range(len(c_list[i])):
             predict_ind = c_list[i][j]
-            case_name = format_current_case_label(test_label_list[predict_ind])
+            case_name = format_prior_case_label(test_label_list[predict_ind])
             pre_list.append(case_name)
         final_pre_dict.update({que_name: pre_list})
     
@@ -43,7 +38,6 @@ def t_metrics(label_dict, predict_dict, topk):
     ## prediction preprocess
     pre_dic = predict_dict
     label_dict = label_dict
-    label_current_map = {key: [format_current_case_label(normalize_case_id(label)) for label in values] for key, values in label_dict.items()}
 
     index = -1
     index_list = []
@@ -55,7 +49,7 @@ def t_metrics(label_dict, predict_dict, topk):
         for v in value[:topk]:
             index_list.append(index)
             preds_list.append(rank)
-            if v in label_current_map[key]:
+            if v in label_dict[key]:
                 traget_list.append(True)
             else:
                 traget_list.append(False)
@@ -71,7 +65,7 @@ def t_metrics(label_dict, predict_dict, topk):
         for v in value[:topk]:
             mrr_index_list.append(index)
             mrr_preds_list.append(rank)
-            if v in label_current_map[key]:
+            if v in label_dict[key]:
                 mrr_traget_list.append(True)
             else:
                 mrr_traget_list.append(False)
@@ -117,11 +111,9 @@ def metric(topk, final_pre_dict, label_dict):
     relevant_cases = 0
     cls_pre = 0
     cls_recall = 0
-    label_current_map = {key: [format_current_case_label(normalize_case_id(label)) for label in values] for key, values in label_dict.items()}
-
     for i in final_pre_dict.keys():
         query_case = i
-        true_list = label_current_map[i]
+        true_list = label_dict[i]
         r = topk
         pred_list = final_pre_dict[i]
 
@@ -160,8 +152,8 @@ def yf_metric(topk, yf_path, final_pre_dict, label_dict ):
     cls_pre_yf = 0
     cls_recall_yf = 0
     yf_dict = {}
-    label_current_map = {key: [format_current_case_label(normalize_case_id(label)) for label in values] for key, values in label_dict.items()}
-    yearfilter_current_map = {key: [format_current_case_label(normalize_case_id(label)) for label in values] for key, values in yearfilter_can_list.items()}
+    label_current_map = label_dict
+    yearfilter_current_map = yearfilter_can_list
     for i in final_pre_dict.keys():
         query_case = i
         true_list = label_current_map[i]
