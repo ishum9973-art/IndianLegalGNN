@@ -6,6 +6,13 @@ task1_train_labels_2025.json
 CaseGNN/
 CaseGNN.zip
 
+# Data and datasets (keep code only)
+PromptCase/**
+!PromptCase/preprocessing/
+!PromptCase/preprocessing/*.py
+label/
+images/
+
 # Python cache/build artifacts
 __pycache__/
 *.py[cod]
@@ -29,13 +36,15 @@ CaseGNN*_run.log
 CaseGNN_experiments/
 events.out.tfevents.*
 
-# Generated PromptCase embeddings
-PromptCase/promptcase_embedding/*.pt
-PromptCase/promptcase_embedding/*_case_list.json
-
 # Generated graph binaries
 Graph_generation/graph/graph_bin_*/
 Graph_generation/graph/**/*.bin
+**/*.bin
+**/*.dgl
+**/*.pt
+**/*.pth
+**/*.pkl
+**/*.npz
 
 # Generated information extraction outputs
 Information_extraction/coliee*_ie/**/result/

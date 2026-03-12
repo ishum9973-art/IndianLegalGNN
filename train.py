@@ -9,14 +9,19 @@ from torch_metrics import t_metrics, metric, yf_metric, rank
 
 
 def normalize_case_identifier(case_str):
-    num = case_str.split('_')[-1].split('.')[0]
+    num = case_str.split('.')[0]
     return str(int(num)).zfill(6)
 
-def current_case_key_from_index(case_index):
-    return f"current_case_{str(int(case_index)).zfill(4)}.txt"
+def current_case_key_from_index(case_index, label_dict=None):
+    base = str(int(case_index))
+    if label_dict:
+        sample_key = next(iter(label_dict))
+        width = len(sample_key.split('.')[0])
+        return f"{base.zfill(width)}.txt"
+    return f"{base}.txt"
 
 def normalize_case_key(key):
-    return str(int(key.split('_')[-1].split('.')[0])).zfill(6)
+    return str(int(key.split('.')[0])).zfill(6)
 
 def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, referissue_pool_dataset, label_dict, yf_path, epoch, temp, bm25_hard_neg_dict, hard_neg, hard_neg_num, train_flag, embedding_saving, optimizer=None):
     if train_flag:
@@ -43,7 +48,7 @@ def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, refer
             bm25_neg_referissue_graph = []
             for x in range(len(batched_case_list)):
                 case_index = int(batched_case_list[x])
-                query_name = current_case_key_from_index(case_index)
+                query_name = current_case_key_from_index(case_index, label_dict)
                 query_sumfact_graph.append(sumfact_pool_dataset.graphs[batched_case_list[x] ])
                 query_referissue_graph.append(referissue_pool_dataset.graphs[batched_case_list[x]])
 

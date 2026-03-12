@@ -9,11 +9,34 @@ from torch_metrics import t_metrics, metric, yf_metric, rank
 import copy
 
 
+def normalize_case_identifier(case_str):
+    num = case_str.split('.')[0]
+    return str(int(num)).zfill(6)
+
+
+def current_case_key_from_index(case_index, label_dict=None):
+    base = str(int(case_index))
+    if label_dict:
+        sample_key = next(iter(label_dict))
+        width = len(sample_key.split('.')[0])
+        return f"{base.zfill(width)}.txt"
+    return f"{base}.txt"
+
+
+def normalize_case_key(key):
+    return str(int(key.split('.')[0])).zfill(6)
+
+
+def format_case_label(case_id, width):
+    return f"{str(int(case_id)).zfill(width)}.txt"
+
+
 def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, referissue_pool_dataset, label_dict, yf_path, epoch, temp, bm25_hard_neg_dict, hard_neg_num, pos_aug, ran_aug, aug_edgedrop, aug_featmask_node, aug_featmask_edge, train_flag, embedding_saving, optimizer=None):
     if train_flag:
         ## Training
         model.train()
         optimizer.zero_grad()
+        label_width = len(next(iter(label_dict)).split('.')[0])
 
         ## Grpah Augementation
         transform_edge_pos = DropEdge(p=aug_edgedrop)
@@ -47,17 +70,17 @@ def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, refer
             aug_ran_neg_referissue_graph = []
 
             for x in range(len(batched_case_list)):
-                query_name = batched_case_list[x] + '.txt'
+                query_name = current_case_key_from_index(batched_case_list[x], label_dict)
                 query_sumfact_graph.append(sumfact_pool_dataset.graphs[batched_case_list[x]])
                 query_referissue_graph.append(referissue_pool_dataset.graphs[batched_case_list[x]])
                 
-                pos_case = random.choice(label_dict[query_name]).split('.')[0]
+                pos_case = normalize_case_identifier(random.choice(label_dict[query_name]))
                 positive_sumfact_graph.append(sumfact_pool_dataset.graphs[pos_case])  
                 positive_referissue_graph.append(referissue_pool_dataset.graphs[pos_case]) 
                 i = 0
                 while i<4400: 
                     ran_neg_case = random.choice(list(sumfact_pool_dataset.labels.keys()))
-                    if ran_neg_case+'.txt' not in label_dict[query_name]:
+                    if format_case_label(ran_neg_case, label_width) not in label_dict[query_name]:
                         break
                     break
                 
@@ -90,7 +113,7 @@ def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, refer
 
                 if hard_neg_num != 0:
                     for i in range(hard_neg_num):
-                        bm25_neg_case = random.choice(bm25_hard_neg_dict[query_name]).split('.')[0]
+                        bm25_neg_case = normalize_case_identifier(random.choice(bm25_hard_neg_dict[query_name]))
                         bm25_neg_sumfact_graph.append(sumfact_pool_dataset.graphs[bm25_neg_case])  
                         bm25_neg_referissue_graph.append(referissue_pool_dataset.graphs[bm25_neg_case]) 
                     
@@ -298,14 +321,15 @@ def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, refer
 
             test_mask = []
             test_query_list = []
+            label_width = len(next(iter(label_dict)).split('.')[0])
             for key, value in label_dict.items():
                 test_mask_0 = []
                 test_query_list.append(key)
-                query_index = test_label_list.index(key.split('.')[0])
+                query_index = test_label_list.index(normalize_case_key(key))
                 score = test_sim_score[query_index, :]
                 sim_score.append(score)
                 for i in range(len(test_label_list)):
-                    case = test_label_list[i]+'.txt'
+                    case = format_case_label(test_label_list[i], label_width)
                     if case in value:
                         test_mask_0.append(1)
                     else:

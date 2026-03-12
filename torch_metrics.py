@@ -5,12 +5,12 @@ import json
 
 def normalize_case_id(label_value):
     """Return just the six-digit numeric identifier from a case label."""
-    return str(int(label_value.split('_')[-1].split('.')[0])).zfill(6)
+    return str(int(label_value.split('.')[0])).zfill(6)
 
 
-def format_prior_case_label(label_value):
-    """Normalize a numeric label into the prior_case_XXXX.txt naming convention."""
-    return f"prior_case_{str(int(label_value)).zfill(4)}.txt"
+def format_case_label(label_value, width=3):
+    """Normalize a numeric label into the <NNN>.txt naming convention."""
+    return f"{str(int(label_value)).zfill(width)}.txt"
 
 
 def rank(test_sim_score_matrix, ranking_num, test_query_list, test_label_list):
@@ -19,14 +19,17 @@ def rank(test_sim_score_matrix, ranking_num, test_query_list, test_label_list):
     b = torch.topk(test_sim_score, ranking_num, dim=1)
     c = b[1].tolist()
     c_list = c
-            
+    label_width = 3
+    if test_query_list:
+        label_width = len(test_query_list[0].split('.')[0])
+
     final_pre_dict = {}
     for i in range(len(c_list)):
         pre_list = []
         que_name = test_query_list[i]
         for j in range(len(c_list[i])):
             predict_ind = c_list[i][j]
-            case_name = format_prior_case_label(test_label_list[predict_ind])
+            case_name = format_case_label(test_label_list[predict_ind], label_width)
             pre_list.append(case_name)
         final_pre_dict.update({que_name: pre_list})
     
