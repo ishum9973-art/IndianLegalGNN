@@ -217,7 +217,7 @@ def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, refer
             sim_score = torch.stack(sim_score)                        
             
             final_pre_dict = rank(sim_score, len(test_label_list), test_query_list, test_label_list)
-            print("final_pre_dict sample:", list(final_pre_dict.items())[:3])
+            # print("final_pre_dict sample:", list(final_pre_dict.items())[:3])
 
             ##1stage
             correct_pred, retri_cases, relevant_cases, Micro_pre, Micro_recall, Micro_F, macro_pre, macro_recall, macro_F = metric(5, final_pre_dict, label_dict)
