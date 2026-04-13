@@ -1,5 +1,5 @@
 import torch
-from torchmetrics import RetrievalNormalizedDCG, RetrievalMRR, RetrievalMAP, RetrievalPrecision
+from torchmetrics.retrieval import RetrievalNormalizedDCG, RetrievalMRR, RetrievalMAP, RetrievalPrecision
 import json
 
 
