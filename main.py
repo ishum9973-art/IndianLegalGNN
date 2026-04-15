@@ -35,6 +35,7 @@ parser.add_argument("--temp", type=float, default=0.1, help="Temperature for rel
 parser.add_argument("--ran_neg_num", type=int, default=1, help="Random sampled case number")
 parser.add_argument("--hard_neg", type=bool, default=False, help="Using bm25_neg or not")
 parser.add_argument("--hard_neg_num", type=int, default=1, help="Bm25_neg case number")
+parser.add_argument('--disable_early_stop', action='store_true', help="Run all epochs without early stopping")
 
 
 ## other parameters
@@ -123,12 +124,13 @@ def main():
         with torch.no_grad():                      
             ndcg_score_yf = forward(args.data, model, device, writer, test_dataloader, test_sumfact_pool_dataset, test_referissue_pool_dataset, test_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, train_flag=False, embedding_saving=False, optimizer=optimizer)
 
-        stop_para = early_stopping(highest_ndcg, ndcg_score_yf, epoch, con_epoch_num)
-        highest_ndcg = stop_para[0]
-        if stop_para[1]:
-            break
-        else:
-            con_epoch_num = stop_para[2]
+        if not args.disable_early_stop:
+            stop_para = early_stopping(highest_ndcg, ndcg_score_yf, epoch, con_epoch_num)
+            highest_ndcg = stop_para[0]
+            if stop_para[1]:
+                break
+            else:
+                con_epoch_num = stop_para[2]
     ##CaseGNN Embedding Saving
     forward(args.data, model, device, writer, train_dataloader, train_sumfact_pool_dataset, train_referissue_pool_dataset, train_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, train_flag=True, embedding_saving=True, optimizer=optimizer)
     forward(args.data, model, device, writer, test_dataloader, test_sumfact_pool_dataset, test_referissue_pool_dataset, test_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, train_flag=False, embedding_saving=True, optimizer=optimizer)

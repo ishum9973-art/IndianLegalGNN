@@ -38,6 +38,7 @@ parser.add_argument("--aug_featmask_node", type=float, default=0, help="Augmenta
 parser.add_argument("--aug_featmask_edge", type=float, default=0, help="Augmentation probability of node feature masking")
 parser.add_argument('--pos_aug',action='store_true')
 parser.add_argument('--ran_aug',action='store_true')
+parser.add_argument('--disable_early_stop', action='store_true', help="Run all epochs without early stopping")
 
 ## other parameters
 parser.add_argument("--data", type=str, default='2023', help="coliee2022 or coliee2023")
@@ -137,12 +138,13 @@ def main():
         with torch.no_grad():            
             ndcg_score_yf = forward(args.data, model, device, writer, test_dataloader, test_sumfact_pool_dataset, test_referissue_pool_dataset, test_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg_num, args.pos_aug, args.ran_aug, args.aug_edgedrop, args.aug_featmask_node, args.aug_featmask_edge, train_flag=False, embedding_saving=False, optimizer=optimizer)
 
-        stop_para = early_stopping(highest_ndcg, ndcg_score_yf, epoch, con_epoch_num)
-        highest_ndcg = stop_para[0]
-        if stop_para[1]:
-            break
-        else:
-            con_epoch_num = stop_para[2]
+        if not args.disable_early_stop:
+            stop_para = early_stopping(highest_ndcg, ndcg_score_yf, epoch, con_epoch_num)
+            highest_ndcg = stop_para[0]
+            if stop_para[1]:
+                break
+            else:
+                con_epoch_num = stop_para[2]
         ##CaseGNN++ Embedding Saving
     forward(args.data, model, device, writer, train_dataloader, train_sumfact_pool_dataset, train_referissue_pool_dataset, train_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg_num, args.pos_aug, args.ran_aug, args.aug_edgedrop, args.aug_featmask_node, args.aug_featmask_edge, train_flag=True, embedding_saving=True, optimizer=optimizer)
     forward(args.data, model, device, writer, test_dataloader, test_sumfact_pool_dataset, test_referissue_pool_dataset, test_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg_num, args.pos_aug, args.ran_aug, args.aug_edgedrop, args.aug_featmask_node, args.aug_featmask_edge, train_flag=False, embedding_saving=True, optimizer=optimizer)
