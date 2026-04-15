@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--in_dim", type=int, default=768, help="Input_feature_dimension")
 parser.add_argument("--h_dim", type=int, default=768, help="Hidden_feature_dimension")
 parser.add_argument("--out_dim", type=int, default=768, help="Output_feature_dimension")
-parser.add_argument("--dropout", default=0.1, type=float, help="Dropout for embedding / GNN layer ")       
+parser.add_argument("--dropout", default=0.01, type=float, help="Dropout for embedding / GNN layer ")       
 parser.add_argument("--num_head", default=1, type=int, help="Head number of GNN layer ")                            
 
 ## training parameters
@@ -33,12 +33,12 @@ parser.add_argument("--wd", default=1e-05, type=float, help="Weight decay if we 
 parser.add_argument("--batch_size", type=int, default=32, help="Batch size for training")
 parser.add_argument("--temp", type=float, default=0.1, help="Temperature for relu")
 parser.add_argument("--ran_neg_num", type=int, default=1, help="Random sampled case number")
-parser.add_argument("--hard_neg", type=bool, default=True, help="Using bm25_neg or not")
+parser.add_argument("--hard_neg", type=bool, default=False, help="Using bm25_neg or not")
 parser.add_argument("--hard_neg_num", type=int, default=1, help="Bm25_neg case number")
 
 
 ## other parameters
-parser.add_argument("--data", type=str, default='2025', help="coliee2022 or coliee2023")
+parser.add_argument("--data", type=str, default='2017', help="coliee2022 or coliee2023")
 
 args = parser.parse_args()
 

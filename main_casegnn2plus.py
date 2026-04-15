@@ -82,6 +82,8 @@ def main():
         inference_bs = 1563
     elif args.data == '2023':
         inference_bs = 1335
+    else:
+        inference_bs = 2
         
     test_sumfact_dataset = SyntheticDataset("./Graph_generation/graph/graph_bin_"+args.data+"/bidirec_"+args.data+"test_fact_Synthetic.bin")
 
@@ -101,11 +103,19 @@ def main():
         f.close() 
 
     bm25_hard_neg_dict = {}
-    with open('./label/hard_neg_top50_train_'+args.data+'.json', 'r')as file:
-        for line in file.readlines():
-            dic = json.loads(line)
-            bm25_hard_neg_dict.update(dic)
-        file.close() 
+    with open('./label/hard_neg_top50_train_'+args.data+'.json', 'r') as file:
+        try:
+            # Standard case: a single JSON object in the file.
+            bm25_hard_neg_dict = json.load(file)
+        except json.JSONDecodeError:
+            # Fallback for JSONL-style files (one object per line).
+            file.seek(0)
+            for line in file:
+                line = line.strip()
+                if not line:
+                    continue
+                dic = json.loads(line)
+                bm25_hard_neg_dict.update(dic)
 
     # ## load test label
     test_labels = {}
