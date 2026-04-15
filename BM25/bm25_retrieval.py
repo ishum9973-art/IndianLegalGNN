@@ -248,7 +248,7 @@ def main():
 
         log_lines.append("")  # trailing newline
 
-        with open(log_path, "a", encoding="utf-8") as f:
+        with open(log_path, "w", encoding="utf-8") as f:
             f.write("\n".join(str(l) for l in log_lines))
 
     print(f"Predictions saved to: {output_path}")
