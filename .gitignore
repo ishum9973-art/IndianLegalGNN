@@ -5,7 +5,7 @@ task1_test_labels_2025.json
 task1_train_labels_2025.json
 CaseGNN/
 CaseGNN.zip
-
+*.zip
 # Data and datasets (keep code only)
 PromptCase/**
 !PromptCase/preprocessing/
