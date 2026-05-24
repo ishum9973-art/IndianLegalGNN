@@ -1,0 +1,1 @@
+venv/bin/python bm25_retrieval.py

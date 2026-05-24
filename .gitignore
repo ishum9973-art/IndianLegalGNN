@@ -10,7 +10,7 @@ CaseGNN.zip
 PromptCase/**
 !PromptCase/preprocessing/
 !PromptCase/preprocessing/*.py
-
+.codex
 # Python cache/build artifacts
 __pycache__/
 *.py[cod]

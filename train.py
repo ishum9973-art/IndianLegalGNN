@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from tqdm import tqdm
 import random
 import dgl
@@ -39,6 +40,10 @@ def gather_bm25_scores(bm25_score_store, query_ids, candidate_ids, device):
     return bm25_score_store['scores'].index_select(0, query_indices).index_select(1, candidate_indices).to(device)
 
 
+def normalize_embeddings(embeddings):
+    return F.normalize(embeddings, p=2, dim=1, eps=1e-12)
+
+
 def log_fusion_weights(model, writer, epoch):
     view_weights = model.get_view_weights().detach().cpu()
     retrieval_weights = model.get_retrieval_weights().detach().cpu()
@@ -48,7 +53,7 @@ def log_fusion_weights(model, writer, epoch):
     writer.add_scalar('Fusion/bm25_weight', retrieval_weights[1].item(), epoch)
 
 
-def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, referissue_pool_dataset, label_dict, yf_path, epoch, temp, bm25_hard_neg_dict, hard_neg, hard_neg_num, train_flag, embedding_saving, optimizer=None, bm25_score_store=None):
+def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, referissue_pool_dataset, label_dict, yf_path, epoch, temp, bm25_hard_neg_dict, hard_neg, hard_neg_num, ran_neg_num, train_flag, embedding_saving, optimizer=None, bm25_score_store=None):
     if train_flag:
         ## Training
         loss_model = nn.CrossEntropyLoss()
@@ -86,22 +91,28 @@ def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, refer
                 positive_case_list.append(pos_case)
                 positive_sumfact_graph.append(sumfact_pool_dataset.graphs[pos_case])  
                 positive_referissue_graph.append(referissue_pool_dataset.graphs[pos_case]) 
-                i = 0
-                while True: 
-                    ran_neg_case = random.choice(list(sumfact_pool_dataset.labels.keys()))
-                    if ran_neg_case not in pos_candidates:
-                        break
+                for _ in range(ran_neg_num):
+                    while True:
+                        ran_neg_case = random.choice(list(sumfact_pool_dataset.labels.keys()))
+                        if ran_neg_case not in pos_candidates and ran_neg_case != batched_case_list[x]:
+                            break
 
-                ran_neg_case_list.append(ran_neg_case)
-                ran_neg_sumfact_graph.append(sumfact_pool_dataset.graphs[ran_neg_case])
-                ran_neg_referissue_graph.append(referissue_pool_dataset.graphs[ran_neg_case])
+                    ran_neg_case_list.append(ran_neg_case)
+                    ran_neg_sumfact_graph.append(sumfact_pool_dataset.graphs[ran_neg_case])
+                    ran_neg_referissue_graph.append(referissue_pool_dataset.graphs[ran_neg_case])
                 
-                for i in range(hard_neg_num):
-                    bm25_candidates = [normalize_case_identifier(case_name) for case_name in bm25_hard_neg_dict[query_name]]
-                    bm25_neg_case = random.choice(bm25_candidates)
-                    bm25_neg_case_list.append(bm25_neg_case)
-                    bm25_neg_sumfact_graph.append(sumfact_pool_dataset.graphs[bm25_neg_case])  
-                    bm25_neg_referissue_graph.append(referissue_pool_dataset.graphs[bm25_neg_case]) 
+                if hard_neg and hard_neg_num > 0:
+                    bm25_candidates = [
+                        normalize_case_identifier(case_name)
+                        for case_name in bm25_hard_neg_dict[query_name]
+                        if normalize_case_identifier(case_name) not in pos_candidates
+                        and normalize_case_identifier(case_name) != batched_case_list[x]
+                    ]
+                    for i in range(hard_neg_num):
+                        bm25_neg_case = random.choice(bm25_candidates)
+                        bm25_neg_case_list.append(bm25_neg_case)
+                        bm25_neg_sumfact_graph.append(sumfact_pool_dataset.graphs[bm25_neg_case])  
+                        bm25_neg_referissue_graph.append(referissue_pool_dataset.graphs[bm25_neg_case]) 
                 
             que_sumfact_batch = dgl.batch(query_sumfact_graph)
             que_referissue_batch = dgl.batch(query_referissue_graph)
@@ -109,92 +120,107 @@ def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, refer
             pos_referissue_batch = dgl.batch(positive_referissue_graph)
             ran_sumfact_batch = dgl.batch(ran_neg_sumfact_graph)
             ran_referissue_batch = dgl.batch(ran_neg_referissue_graph)
-            bm25_sumfact_batch = dgl.batch(bm25_neg_sumfact_graph)
-            bm25_referissue_batch = dgl.batch(bm25_neg_referissue_graph)
+            if hard_neg and hard_neg_num > 0:
+                bm25_sumfact_batch = dgl.batch(bm25_neg_sumfact_graph)
+                bm25_referissue_batch = dgl.batch(bm25_neg_referissue_graph)
 
             # query: input_1_fact, input_1_issue
             feat_1_node_fact = que_sumfact_batch.ndata['w']
             feat_1_edge_fact = que_sumfact_batch.edata['w']
             output_1_fact = model(que_sumfact_batch.to(device), feat_1_node_fact.to(device), feat_1_edge_fact.to(device))
-            output_1_norm_fact = output_1_fact / output_1_fact.norm(dim=1)[:, None]
+            output_1_norm_fact = normalize_embeddings(output_1_fact)
 
             feat_1_node_issue = que_referissue_batch.ndata['w']
             feat_1_edge_issue = que_referissue_batch.edata['w']
             output_1_issue = model(que_referissue_batch.to(device), feat_1_node_issue.to(device), feat_1_edge_issue.to(device))
-            output_1_norm_issue = output_1_issue / output_1_issue.norm(dim=1)[:, None]
+            output_1_norm_issue = normalize_embeddings(output_1_issue)
 
             # pos: input_2_fact, input_2_issue
             feat_2_node_fact = pos_sumfact_batch.ndata['w']
             feat_2_edge_fact = pos_sumfact_batch.edata['w']
             output_2_fact = model(pos_sumfact_batch.to(device), feat_2_node_fact.to(device), feat_2_edge_fact.to(device))
-            output_2_norm_fact = output_2_fact / output_2_fact.norm(dim=1)[:, None]
+            output_2_norm_fact = normalize_embeddings(output_2_fact)
 
             feat_2_node_issue = pos_referissue_batch.ndata['w']
             feat_2_edge_issue = pos_referissue_batch.edata['w']
             output_2_issue = model(pos_referissue_batch.to(device), feat_2_node_issue.to(device), feat_2_edge_issue.to(device))
-            output_2_norm_issue = output_2_issue / output_2_issue.norm(dim=1)[:, None]
+            output_2_norm_issue = normalize_embeddings(output_2_issue)
 
             # ran_neg: input_3_fact, input_3_issue
             feat_3_node_fact = ran_sumfact_batch.ndata['w']
             feat_3_edge_fact = ran_sumfact_batch.edata['w']
             output_3_fact = model(ran_sumfact_batch.to(device), feat_3_node_fact.to(device), feat_3_edge_fact.to(device))
-            output_3_norm_fact = output_3_fact / output_3_fact.norm(dim=1)[:, None]
+            output_3_norm_fact = normalize_embeddings(output_3_fact)
 
             feat_3_node_issue = ran_referissue_batch.ndata['w']
             feat_3_edge_issue = ran_referissue_batch.edata['w']
             output_3_issue = model(ran_referissue_batch.to(device), feat_3_node_issue.to(device), feat_3_edge_issue.to(device))
-            output_3_norm_issue = output_3_issue / output_3_issue.norm(dim=1)[:, None]
+            output_3_norm_issue = normalize_embeddings(output_3_issue)
 
             # bm25_neg: input_4
-            feat_4_node_fact = bm25_sumfact_batch.ndata['w']
-            feat_4_edge_fact = bm25_sumfact_batch.edata['w']
-            output_4_fact = model(bm25_sumfact_batch.to(device), feat_4_node_fact.to(device), feat_4_edge_fact.to(device))
-            output_4_norm_fact = output_4_fact / output_4_fact.norm(dim=1)[:, None]
+            if hard_neg and hard_neg_num > 0:
+                feat_4_node_fact = bm25_sumfact_batch.ndata['w']
+                feat_4_edge_fact = bm25_sumfact_batch.edata['w']
+                output_4_fact = model(bm25_sumfact_batch.to(device), feat_4_node_fact.to(device), feat_4_edge_fact.to(device))
+                output_4_norm_fact = normalize_embeddings(output_4_fact)
 
-            feat_4_node_issue = bm25_referissue_batch.ndata['w']
-            feat_4_edge_issue = bm25_referissue_batch.edata['w']
-            output_4_issue = model(bm25_referissue_batch.to(device), feat_4_node_issue.to(device), feat_4_edge_issue.to(device))
-            output_4_norm_issue = output_4_issue / output_4_issue.norm(dim=1)[:, None]
+                feat_4_node_issue = bm25_referissue_batch.ndata['w']
+                feat_4_edge_issue = bm25_referissue_batch.edata['w']
+                output_4_issue = model(bm25_referissue_batch.to(device), feat_4_node_issue.to(device), feat_4_edge_issue.to(device))
+                output_4_norm_issue = normalize_embeddings(output_4_issue)
 
 
             # positive logits: l_pos[batch_size, batch_size]:output_1 x output_2
             l_pos_fact = torch.mm(output_1_norm_fact, output_2_norm_fact.transpose(0,1))
             l_pos_issue = torch.mm(output_1_norm_issue, output_2_norm_issue.transpose(0,1))
-            l_pos_graph = model.combine_fact_issue_scores(l_pos_fact, l_pos_issue)
-            l_pos = model.combine_with_bm25(
-                l_pos_graph,
-                gather_bm25_scores(bm25_score_store, batched_case_list, positive_case_list, device),
-            )
+            if bm25_score_store is None:
+                l_pos = l_pos_fact + l_pos_issue
+            else:
+                l_pos_graph = model.combine_fact_issue_scores(l_pos_fact, l_pos_issue)
+                l_pos = model.combine_with_bm25(
+                    l_pos_graph,
+                    gather_bm25_scores(bm25_score_store, batched_case_list, positive_case_list, device),
+                )
             
             # negative logits: l_neg[batch_size, batch_size]: AxA 
             ## diagonal is the dot product of query and itself
             l_neg_fact = torch.mm(output_1_norm_fact, output_1_norm_fact.transpose(0,1))
             l_neg_issue = torch.mm(output_1_norm_issue, output_1_norm_issue.transpose(0,1))
-            l_neg_graph = model.combine_fact_issue_scores(l_neg_fact, l_neg_issue)
-            l_neg = model.combine_with_bm25(
-                l_neg_graph,
-                gather_bm25_scores(bm25_score_store, batched_case_list, batched_case_list, device),
-            )
+            if bm25_score_store is None:
+                l_neg = l_neg_fact + l_neg_issue
+            else:
+                l_neg_graph = model.combine_fact_issue_scores(l_neg_fact, l_neg_issue)
+                l_neg = model.combine_with_bm25(
+                    l_neg_graph,
+                    gather_bm25_scores(bm25_score_store, batched_case_list, batched_case_list, device),
+                )
             l_neg.fill_diagonal_(float('-inf'))
 
             ## random negative logits: l_ran_neg[batch_size, batch_size]:
             l_ran_neg_fact = torch.mm(output_1_norm_fact, output_3_norm_fact.transpose(0,1)) 
             l_ran_neg_issue = torch.mm(output_1_norm_issue, output_3_norm_issue.transpose(0,1))
-            l_ran_neg_graph = model.combine_fact_issue_scores(l_ran_neg_fact, l_ran_neg_issue)
-            l_ran_neg = model.combine_with_bm25(
-                l_ran_neg_graph,
-                gather_bm25_scores(bm25_score_store, batched_case_list, ran_neg_case_list, device),
-            )
+            if bm25_score_store is None:
+                l_ran_neg = l_ran_neg_fact + l_ran_neg_issue
+            else:
+                l_ran_neg_graph = model.combine_fact_issue_scores(l_ran_neg_fact, l_ran_neg_issue)
+                l_ran_neg = model.combine_with_bm25(
+                    l_ran_neg_graph,
+                    gather_bm25_scores(bm25_score_store, batched_case_list, ran_neg_case_list, device),
+                )
 
-            l_bm25_neg_fact = torch.mm(output_1_norm_fact, output_4_norm_fact.transpose(0,1))
-            l_bm25_neg_issue = torch.mm(output_1_norm_issue, output_4_norm_issue.transpose(0,1))
-            l_bm25_neg_graph = model.combine_fact_issue_scores(l_bm25_neg_fact, l_bm25_neg_issue)
-            l_bm25_neg = model.combine_with_bm25(
-                l_bm25_neg_graph,
-                gather_bm25_scores(bm25_score_store, batched_case_list, bm25_neg_case_list, device),
-            )
+            if hard_neg and hard_neg_num > 0:
+                l_bm25_neg_fact = torch.mm(output_1_norm_fact, output_4_norm_fact.transpose(0,1))
+                l_bm25_neg_issue = torch.mm(output_1_norm_issue, output_4_norm_issue.transpose(0,1))
+                if bm25_score_store is None:
+                    l_bm25_neg = l_bm25_neg_fact + l_bm25_neg_issue
+                else:
+                    l_bm25_neg_graph = model.combine_fact_issue_scores(l_bm25_neg_fact, l_bm25_neg_issue)
+                    l_bm25_neg = model.combine_with_bm25(
+                        l_bm25_neg_graph,
+                        gather_bm25_scores(bm25_score_store, batched_case_list, bm25_neg_case_list, device),
+                    )
 
-            if hard_neg == True:
+            if hard_neg and hard_neg_num > 0:
                 logits = torch.cat([l_pos, l_neg, l_ran_neg, l_bm25_neg], dim=1).to(device)
             else:
                 logits = torch.cat([l_pos, l_neg, l_ran_neg], dim=1).to(device)
@@ -247,17 +273,20 @@ def forward(data, model, device, writer, dataloader, sumfact_pool_dataset, refer
             test_sumfact_graph_rep = sumfact_graph_rep_matrix
             test_referissue_graph_rep = referissue_graph_rep_matrix
 
-            test_sumfact_graph_rep_norm = test_sumfact_graph_rep / test_sumfact_graph_rep.norm(dim=1)[:, None]
-            test_referissue_graph_rep_norm = test_referissue_graph_rep / test_referissue_graph_rep.norm(dim=1)[:, None]
+            test_sumfact_graph_rep_norm = normalize_embeddings(test_sumfact_graph_rep)
+            test_referissue_graph_rep_norm = normalize_embeddings(test_referissue_graph_rep)
 
             test_sumfact_score = torch.mm(test_sumfact_graph_rep_norm, test_sumfact_graph_rep_norm.T)
             test_referissue_score = torch.mm(test_referissue_graph_rep_norm, test_referissue_graph_rep_norm.T)
 
-            test_graph_score = model.combine_fact_issue_scores(test_sumfact_score, test_referissue_score)
-            test_sim_score = model.combine_with_bm25(
-                test_graph_score,
-                gather_bm25_scores(bm25_score_store, test_label_list, test_label_list, device),
-            )
+            if bm25_score_store is None:
+                test_sim_score = test_sumfact_score + test_referissue_score
+            else:
+                test_graph_score = model.combine_fact_issue_scores(test_sumfact_score, test_referissue_score)
+                test_sim_score = model.combine_with_bm25(
+                    test_graph_score,
+                    gather_bm25_scores(bm25_score_store, test_label_list, test_label_list, device),
+                )
             test_sim_score.fill_diagonal_(float('-inf'))
 
             sim_score = []

@@ -1,0 +1,17 @@
+venv/bin/python main.py \
+  --in_dim=768 \
+  --h_dim=768 \
+  --out_dim=768 \
+  --dropout=0.1 \
+  --num_head=1 \
+  --epoch=100 \
+  --lr=1e-4 \
+  --wd=1e-4 \
+  --batch_size=8 \
+  --temp=0.1 \
+  --ran_neg_num=1 \
+  --hard_neg=True \
+  --hard_neg_num=1 \
+  --data=2017 \
+  --disable_early_stop 2>&1 | tee CaseGNN2017_simple_run.log
+

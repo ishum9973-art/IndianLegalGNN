@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1450" viewBox="0 0 2400 1450" role="img" aria-labelledby="title desc">
+  <title id="title">Fusion CaseGNN Architecture</title>
+  <desc id="desc">Architecture diagram for Fusion CaseGNN with CaseGNN graph views, BM25 scoring, learnable fusion, and ranking output.</desc>
+  <defs>
+    <style>
+      .bg { fill: #fbfaf7; }
+      .panel { filter: url(#shadow); }
+      .title { font: 700 50px Arial, Helvetica, sans-serif; fill: #1f2933; letter-spacing: 0; }
+      .subtitle { font: 400 24px Arial, Helvetica, sans-serif; fill: #52606d; letter-spacing: 0; }
+      .tag { font: 700 15px Arial, Helvetica, sans-serif; fill: #ffffff; letter-spacing: .5px; }
+      .card-title { font: 700 28px Arial, Helvetica, sans-serif; fill: #1f2933; letter-spacing: 0; }
+      .text { font: 400 20px Arial, Helvetica, sans-serif; fill: #334e68; letter-spacing: 0; }
+      .text-strong { font: 700 21px Arial, Helvetica, sans-serif; fill: #243b53; letter-spacing: 0; }
+      .small { font: 400 17px Arial, Helvetica, sans-serif; fill: #52606d; letter-spacing: 0; }
+      .formula { font: 600 19px Consolas, "DejaVu Sans Mono", monospace; fill: #1f2933; letter-spacing: 0; }
+      .box-label { font: 700 18px Arial, Helvetica, sans-serif; fill: #243b53; letter-spacing: 0; }
+      .input { fill: #fff7ed; stroke: #d97706; }
+      .graph { fill: #eefcf7; stroke: #2f855a; }
+      .encoder { fill: #eff6ff; stroke: #2563eb; }
+      .score { fill: #f5f3ff; stroke: #7c3aed; }
+      .view { fill: #fff1f2; stroke: #be123c; }
+      .bm25 { fill: #fefce8; stroke: #b7791f; }
+      .retrieval { fill: #ecfdf5; stroke: #16a34a; }
+      .output { fill: #f8fafc; stroke: #64748b; }
+      .subbox { rx: 12; ry: 12; fill: #ffffff; stroke-width: 2; }
+      .arrow { stroke: #405261; stroke-width: 4; fill: none; marker-end: url(#arrow); stroke-linecap: round; stroke-linejoin: round; }
+      .arrow-soft { stroke: #718096; stroke-width: 3; fill: none; marker-end: url(#arrowSoft); stroke-linecap: round; stroke-linejoin: round; }
+      .arrow-graph { stroke: #7c3aed; stroke-width: 5; fill: none; marker-end: url(#arrowGraph); stroke-linecap: round; stroke-linejoin: round; }
+      .arrow-bm25 { stroke: #b7791f; stroke-width: 5; fill: none; marker-end: url(#arrowBm25); stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#102a43" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow" markerWidth="13" markerHeight="13" refX="11" refY="6.5" orient="auto">
+      <path d="M2,2 L11,6.5 L2,11 Z" fill="#405261"/>
+    </marker>
+    <marker id="arrowSoft" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto">
+      <path d="M2,2 L9,5.5 L2,9 Z" fill="#718096"/>
+    </marker>
+    <marker id="arrowGraph" markerWidth="13" markerHeight="13" refX="11" refY="6.5" orient="auto">
+      <path d="M2,2 L11,6.5 L2,11 Z" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowBm25" markerWidth="13" markerHeight="13" refX="11" refY="6.5" orient="auto">
+      <path d="M2,2 L11,6.5 L2,11 Z" fill="#b7791f"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="2400" height="1450"/>
+  <path d="M0 132 H2400" stroke="#e5e7eb" stroke-width="2"/>
+  <text class="title" x="70" y="72">Fusion CaseGNN Architecture</text>
+  <text class="subtitle" x="72" y="112">CaseGNN semantic graph retrieval plus BM25 lexical retrieval, combined with learnable fusion weights</text>
+
+  <!-- Input -->
+  <g class="panel">
+    <rect class="input" x="70" y="185" width="340" height="380" rx="16" stroke-width="2"/>
+    <rect x="100" y="215" width="104" height="36" rx="18" fill="#d97706"/>
+    <text class="tag" x="124" y="238">INPUT</text>
+    <text class="card-title" x="100" y="292">Legal case corpus</text>
+    <text class="text" x="100" y="338">
+      <tspan x="100" dy="0">Query case</tspan>
+      <tspan x="100" dy="36">Candidate cases</tspan>
+      <tspan x="100" dy="36">Fact summaries</tspan>
+      <tspan x="100" dy="36">Referenced issues</tspan>
+      <tspan x="100" dy="36">Training labels</tspan>
+      <tspan x="100" dy="36">Year-filter file</tspan>
+    </text>
+  </g>
+
+  <!-- Graph views -->
+  <g class="panel">
+    <rect class="graph" x="470" y="155" width="430" height="440" rx="16" stroke-width="2"/>
+    <rect x="500" y="185" width="144" height="36" rx="18" fill="#2f855a"/>
+    <text class="tag" x="521" y="208">GRAPH VIEWS</text>
+    <text class="card-title" x="500" y="262">TACG construction</text>
+    <text class="small" x="500" y="296">Text-attributed case graphs for both views</text>
+
+    <rect class="subbox" x="500" y="335" width="370" height="100" stroke="#2f855a"/>
+    <text class="box-label" x="526" y="370">Fact graph</text>
+    <text class="small" x="526" y="400">Node text embeddings</text>
+    <text class="small" x="526" y="424">Edge relation features</text>
+
+    <rect class="subbox" x="500" y="465" width="370" height="100" stroke="#2f855a"/>
+    <text class="box-label" x="526" y="500">Issue graph</text>
+    <text class="small" x="526" y="530">Referenced issue nodes</text>
+    <text class="small" x="526" y="554">Legal relation edges</text>
+  </g>
+
+  <!-- Encoder -->
+  <g class="panel">
+    <rect class="encoder" x="980" y="155" width="500" height="440" rx="16" stroke-width="2"/>
+    <rect x="1010" y="185" width="116" height="36" rx="18" fill="#2563eb"/>
+    <text class="tag" x="1033" y="208">ENCODER</text>
+    <text class="card-title" x="1010" y="262">Shared CaseGNN encoder</text>
+    <text class="small" x="1010" y="296">Same weights encode fact and issue TACGs</text>
+
+    <rect class="subbox" x="1015" y="340" width="190" height="60" stroke="#2563eb"/>
+    <text class="box-label" x="1040" y="377">EdgeGATConv 1</text>
+    <rect class="subbox" x="1250" y="340" width="190" height="60" stroke="#2563eb"/>
+    <text class="box-label" x="1271" y="377">Dropout + ReLU</text>
+    <rect class="subbox" x="1015" y="465" width="190" height="60" stroke="#2563eb"/>
+    <text class="box-label" x="1040" y="502">EdgeGATConv 2</text>
+    <rect class="subbox" x="1250" y="465" width="190" height="60" stroke="#2563eb"/>
+    <text class="box-label" x="1286" y="502">Case vector</text>
+
+    <path class="arrow-soft" d="M1205 370 H1238"/>
+    <path class="arrow-soft" d="M1345 400 V438 H1110 V453"/>
+    <path class="arrow-soft" d="M1205 495 H1238"/>
+  </g>
+
+  <!-- Similarity -->
+  <g class="panel">
+    <rect class="score" x="1560" y="155" width="380" height="440" rx="16" stroke-width="2"/>
+    <rect x="1590" y="185" width="100" height="36" rx="18" fill="#7c3aed"/>
+    <text class="tag" x="1613" y="208">SCORE</text>
+    <text class="card-title" x="1590" y="262">Pairwise similarity</text>
+    <text class="text" x="1590" y="306">
+      <tspan x="1590" dy="0">Normalize query and</tspan>
+      <tspan x="1590" dy="33">candidate embeddings</tspan>
+    </text>
+
+    <rect class="subbox" x="1590" y="390" width="320" height="60" stroke="#7c3aed"/>
+    <text class="formula" x="1616" y="428">fact = cosine(qf, cf)</text>
+    <rect class="subbox" x="1590" y="480" width="320" height="60" stroke="#7c3aed"/>
+    <text class="formula" x="1616" y="518">issue = cosine(qi, ci)</text>
+  </g>
+
+  <!-- View fusion -->
+  <g class="panel">
+    <rect class="view" x="2020" y="155" width="330" height="440" rx="16" stroke-width="2"/>
+    <rect x="2050" y="185" width="138" height="36" rx="18" fill="#be123c"/>
+    <text class="tag" x="2071" y="208">VIEW FUSION</text>
+    <text class="card-title" x="2050" y="262">Graph score</text>
+
+    <rect class="subbox" x="2050" y="310" width="270" height="74" stroke="#be123c"/>
+    <text class="formula" x="2074" y="342">w_view = softmax</text>
+    <text class="formula" x="2074" y="370">(view logits)</text>
+
+    <rect class="subbox" x="2050" y="420" width="270" height="132" stroke="#be123c"/>
+    <text class="formula" x="2074" y="454">graph =</text>
+    <text class="formula" x="2074" y="488">w_fact * fact</text>
+    <text class="formula" x="2074" y="522">+ w_issue * issue</text>
+  </g>
+
+  <!-- BM25 branch -->
+  <g class="panel">
+    <rect class="bm25" x="470" y="720" width="790" height="320" rx="16" stroke-width="2"/>
+    <rect x="500" y="750" width="132" height="36" rx="18" fill="#b7791f"/>
+    <text class="tag" x="521" y="773">BM25 PATH</text>
+    <text class="card-title" x="500" y="826">Lexical retrieval score</text>
+    <text class="text" x="500" y="912">
+      <tspan x="500" dy="0">Build BM25 score store from case summaries</tspan>
+      <tspan x="500" dy="34">Look up each query and candidate pair</tspan>
+      <tspan x="500" dy="34">Use normalized scores during training and inference</tspan>
+    </text>
+
+    <rect class="subbox" x="880" y="786" width="345" height="76" stroke="#b7791f"/>
+    <text class="formula" x="906" y="831">bm25 = BM25(query, case)</text>
+  </g>
+
+  <!-- Retrieval fusion -->
+  <g class="panel">
+    <rect class="retrieval" x="1560" y="735" width="790" height="290" rx="16" stroke-width="2"/>
+    <rect x="1590" y="765" width="184" height="36" rx="18" fill="#16a34a"/>
+    <text class="tag" x="1612" y="788">RETRIEVAL FUSION</text>
+    <text class="card-title" x="1590" y="842">Final relevance score</text>
+
+    <text class="formula" x="1590" y="890">w_ret = softmax(retrieval logits)</text>
+    <text class="formula" x="1590" y="928">graph_norm = (graph + 1) / 2</text>
+    <rect class="subbox" x="1590" y="952" width="720" height="56" stroke="#16a34a"/>
+    <text class="formula" x="1616" y="985">final = w_graph * graph_norm + w_bm25 * bm25</text>
+  </g>
+
+  <!-- Output -->
+  <g class="panel">
+    <rect class="output" x="1560" y="1130" width="790" height="270" rx="16" stroke-width="2"/>
+    <rect x="1590" y="1160" width="112" height="36" rx="18" fill="#64748b"/>
+    <text class="tag" x="1613" y="1183">OUTPUT</text>
+    <text class="card-title" x="1590" y="1236">Training and inference</text>
+    <text class="text" x="1590" y="1281">
+      <tspan x="1590" dy="0">Training: CrossEntropy(logits / temperature)</tspan>
+      <tspan x="1590" dy="34">Candidates: positive, in-batch, random, and BM25 hard negatives</tspan>
+      <tspan x="1590" dy="34">Inference: rank top-k cases; report NDCG, MRR,</tspan>
+      <tspan x="1590" dy="34">MAP, and Precision</tspan>
+    </text>
+  </g>
+
+  <!-- Directional flow arrows -->
+  <path class="arrow" d="M410 375 H470"/>
+  <path class="arrow" d="M900 375 H980"/>
+  <path class="arrow" d="M1480 375 H1560"/>
+  <path class="arrow" d="M1940 375 H2020"/>
+
+  <path class="arrow-bm25" d="M240 565 V860 H470"/>
+  <text class="small" x="265" y="835">summary text</text>
+
+  <path class="arrow-graph" d="M2185 595 V660 H1955 V735"/>
+  <text class="small" x="2002" y="649">graph score</text>
+
+  <path class="arrow-bm25" d="M1260 860 H1560"/>
+  <text class="small" x="1352" y="835">BM25 score</text>
+
+  <path class="arrow" d="M1955 1025 V1130"/>
+
+  <!-- Summary strip -->
+  <g class="panel">
+    <rect x="70" y="1125" width="1190" height="235" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <text class="text-strong" x="100" y="1178">Fusion CaseGNN in one line</text>
+    <text class="text" x="100" y="1222">
+      <tspan x="100" dy="0">CaseGNN learns semantic similarity from fact and issue graphs.</tspan>
+      <tspan x="100" dy="36">BM25 adds lexical matching from summaries.</tspan>
+      <tspan x="100" dy="36">Learnable weights decide how much each signal contributes.</tspan>
+    </text>
+  </g>
+</svg>

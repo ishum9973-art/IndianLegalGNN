@@ -19,14 +19,49 @@ args = parser.parse_args()
 
 if args.feature == "fact":
     input_path = './PromptCase/task1_'+args.dataset+'_'+args.data+'/summary_'+args.dataset+'_'+args.data+'_txt'
+    fallback_input_path = './PromptCase/task1_'+args.dataset+'_'+args.data+'/processed'
     output_path = os.getcwd()+'/Information_extraction/coliee'+args.data+'_ie/coliee'+args.data+args.dataset+'_sum'
 else:
     input_path = './PromptCase/task1_'+args.dataset+'_'+args.data+'/processed_new'
+    fallback_input_path = None
     output_path = os.getcwd()+'/Information_extraction/coliee'+args.data+'_ie/coliee'+args.data+args.dataset+'_refer'
 
 
 print("input path : ",input_path)
 print("output path : ",output_path)
+
+FACT_FALLBACK_MIN_WORDS = 20
+
+
+def read_text(path):
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
+
+
+def should_use_fact_fallback(text):
+    return len(text.split()) < FACT_FALLBACK_MIN_WORDS
+
+
+def load_document_text(file_path):
+    doc = read_text(file_path)
+    if args.feature != "fact":
+        return doc, False
+
+    if not should_use_fact_fallback(doc):
+        return doc, False
+
+    if fallback_input_path is None:
+        return doc, False
+
+    fallback_file = os.path.join(fallback_input_path, os.path.basename(file_path))
+    if not os.path.exists(fallback_file):
+        return doc, False
+
+    fallback_doc = read_text(fallback_file)
+    if len(fallback_doc.split()) <= len(doc.split()):
+        return doc, False
+
+    return fallback_doc, True
 
 class SpacyNER:
     def ner(self,doc):    
@@ -68,9 +103,12 @@ def main():
         # if os.path.exists(coref_resolved_op+file.split('/')[-1]):
         #     continue
         # else:
-        with open(file,"r") as f:
-            lines = f.read().splitlines()
-        
+        doc_text, used_fallback = load_document_text(file)
+        if used_fallback:
+            print(f"Using processed fallback for fact IE: {os.path.basename(file)}")
+
+        lines = doc_text.splitlines()
+
         doc = ""
         for line in lines:
             doc += line + ' '

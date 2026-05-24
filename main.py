@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import json
 import os
+import tempfile
 from tqdm import tqdm
 
 from dgl.dataloading import GraphDataLoader
@@ -12,6 +13,9 @@ from DATASET.data_load import SyntheticDataset, PoolDataset, collate
 from model import CaseGNN, early_stopping
 from bm25_utils import build_bm25_score_store
 
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "casegnn-matplotlib"))
+os.makedirs(os.environ["MPLCONFIGDIR"], exist_ok=True)
+
 from train import forward
 
 from torch.utils.tensorboard import SummaryWriter
@@ -20,6 +24,19 @@ import logging
 
 import argparse
 parser = argparse.ArgumentParser()
+
+
+def str2bool(value):
+    if isinstance(value, bool):
+        return value
+    value = value.lower()
+    if value in ("yes", "true", "t", "1"):
+        return True
+    if value in ("no", "false", "f", "0"):
+        return False
+    raise argparse.ArgumentTypeError("Boolean value expected.")
+
+
 ## model parameters
 parser.add_argument("--in_dim", type=int, default=768, help="Input_feature_dimension")
 parser.add_argument("--h_dim", type=int, default=768, help="Hidden_feature_dimension")
@@ -34,10 +51,12 @@ parser.add_argument("--wd", default=1e-05, type=float, help="Weight decay if we 
 parser.add_argument("--batch_size", type=int, default=32, help="Batch size for training")
 parser.add_argument("--temp", type=float, default=0.1, help="Temperature for relu")
 parser.add_argument("--ran_neg_num", type=int, default=1, help="Random sampled case number")
-parser.add_argument("--hard_neg", type=bool, default=False, help="Using bm25_neg or not")
+parser.add_argument("--hard_neg", type=str2bool, nargs="?", const=True, default=False, help="Using bm25_neg or not")
 parser.add_argument("--hard_neg_num", type=int, default=1, help="Bm25_neg case number")
 parser.add_argument('--disable_early_stop', action='store_true', help="Run all epochs without early stopping")
-parser.add_argument('--disable_bm25_fusion', action='store_true', help="Disable weighted fusion with BM25 scores")
+parser.add_argument('--enable_view_weight_fusion', action='store_true', help="Enable learnable fact/issue view fusion. This is already the simple CaseGNN default.")
+parser.add_argument('--enable_bm25_fusion', action='store_true', help="Enable weighted fusion with BM25 scores")
+parser.add_argument('--disable_bm25_fusion', action='store_true', help="Deprecated; BM25 fusion is disabled by default for simple CaseGNN")
 parser.add_argument("--bm25_train_dir", type=str, default=None, help="Optional override for the training summary directory used to build BM25 scores")
 parser.add_argument("--bm25_test_dir", type=str, default=None, help="Optional override for the test summary directory used to build BM25 scores")
 
@@ -58,8 +77,8 @@ def resolve_summary_dir(split):
 
 
 def maybe_build_bm25_store(split, override_dir=None):
-    if args.disable_bm25_fusion:
-        logging.warning("BM25 fusion disabled by flag.")
+    if args.disable_bm25_fusion or not args.enable_bm25_fusion:
+        logging.warning("BM25 fusion disabled for simple CaseGNN.")
         return None
 
     summary_dir = override_dir or resolve_summary_dir(split)
@@ -146,9 +165,9 @@ def main():
     con_epoch_num = 0
     for epoch in tqdm(range(args.epoch)):
         print('Epoch:', epoch)
-        forward(args.data, model, device, writer, train_dataloader, train_sumfact_pool_dataset, train_referissue_pool_dataset, train_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, train_flag=True, embedding_saving=False, optimizer=optimizer, bm25_score_store=train_bm25_score_store)
+        forward(args.data, model, device, writer, train_dataloader, train_sumfact_pool_dataset, train_referissue_pool_dataset, train_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, args.ran_neg_num, train_flag=True, embedding_saving=False, optimizer=optimizer, bm25_score_store=train_bm25_score_store)
         with torch.no_grad():                      
-            ndcg_score_yf = forward(args.data, model, device, writer, test_dataloader, test_sumfact_pool_dataset, test_referissue_pool_dataset, test_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, train_flag=False, embedding_saving=False, optimizer=optimizer, bm25_score_store=test_bm25_score_store)
+            ndcg_score_yf = forward(args.data, model, device, writer, test_dataloader, test_sumfact_pool_dataset, test_referissue_pool_dataset, test_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, args.ran_neg_num, train_flag=False, embedding_saving=False, optimizer=optimizer, bm25_score_store=test_bm25_score_store)
 
         if not args.disable_early_stop:
             stop_para = early_stopping(highest_ndcg, ndcg_score_yf, epoch, con_epoch_num)
@@ -158,8 +177,8 @@ def main():
             else:
                 con_epoch_num = stop_para[2]
     ##CaseGNN Embedding Saving
-    forward(args.data, model, device, writer, train_dataloader, train_sumfact_pool_dataset, train_referissue_pool_dataset, train_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, train_flag=True, embedding_saving=True, optimizer=optimizer, bm25_score_store=train_bm25_score_store)
-    forward(args.data, model, device, writer, test_dataloader, test_sumfact_pool_dataset, test_referissue_pool_dataset, test_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, train_flag=False, embedding_saving=True, optimizer=optimizer, bm25_score_store=test_bm25_score_store)
+    forward(args.data, model, device, writer, train_dataloader, train_sumfact_pool_dataset, train_referissue_pool_dataset, train_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, args.ran_neg_num, train_flag=True, embedding_saving=True, optimizer=optimizer, bm25_score_store=train_bm25_score_store)
+    forward(args.data, model, device, writer, test_dataloader, test_sumfact_pool_dataset, test_referissue_pool_dataset, test_labels, yf_path, epoch, args.temp, bm25_hard_neg_dict, args.hard_neg, args.hard_neg_num, args.ran_neg_num, train_flag=False, embedding_saving=True, optimizer=optimizer, bm25_score_store=test_bm25_score_store)
 
 if __name__ == '__main__':
     main()
